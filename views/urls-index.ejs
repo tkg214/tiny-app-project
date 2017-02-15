@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 
 <html lang="en">
-<head>
-  <% include partials/_header %>
-</head>
-
-<body>
-  <div>
-    <ul>
-      <% for (key in urls) { %>
-        <li><%= `${key} : ${urls[key]}` %></li>
-      <% } %>
-    <a href= "LINK_TO_ADD">Shorten new URL</a>
-    </ul>
-  <div>
-</body>
+  <head>
+    <title>TinyApp</title>
+  </head>
+  <body>
+    <% include partials/_header %>
+    <div>
+      <ul>
+        <% for (key in urls) { %>
+          <li><%= `${key} : ${urls[key]}` %></li>
+        <% } %>
+      <a href= "LINK_TO_ADD">Shorten new URL</a>
+      </ul>
+    <div>
+  </body>
 </html>
