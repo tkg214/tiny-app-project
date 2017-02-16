@@ -21,7 +21,9 @@ let urlDatabase = {
   '9sm5xK': { shortURL: '9sm5xK', longURL: 'http://www.lighthouselabs.ca', user: 'UG79xq' }
 };
 
-let users = { UG79xq: { id: 'UG79xq', email: 'tkg214@gmail.com', password: 'a' } };
+let users = {
+  UG79xq: { id: 'UG79xq', email: 'tkg214@gmail.com', password: 'a' },
+  ABc90s: { id: 'ABc90s', email: 'abc@gmail.com', password: 'a' }};
 
 /*
 
@@ -38,6 +40,19 @@ function findUserId(email) {
   }
 }
 
+function urlsForUser(id) {
+  userURLS = {};
+  for (url in urlDatabase) {
+    if (id === urlDatabase[url].user) {
+      userURLS[urlDatabase[url].shortURL] = {
+        shortURL: urlDatabase[url].shortURL,
+        longURL: urlDatabase[url].longURL
+      };
+    }
+  }
+  return userURLS;
+}
+
 // receives request for root path, redirects to /urls
 app.get('/', (req, res) => {
   res.redirect('/urls');
@@ -46,7 +61,7 @@ app.get('/', (req, res) => {
 // receives request to show list of urls page and responds with rendered urls_index.ejs
 app.get('/urls', (req, res) => {
   res.render('urls_index', {
-    urlDatabase: urlDatabase,
+    urlDatabase: urlsForUser(req.cookies.user_id),
     user_id: req.cookies.user_id// base on sessions
   });
 });
@@ -54,7 +69,7 @@ app.get('/urls', (req, res) => {
 // receives request to create new url page and responds with rendered urls_new.ejs
 app.get('/urls/new', (req, res) => {
   for (let user in users) {
-    if (req.cookies.user_id == users[user]['id']) {
+    if (req.cookies.user_id === users[user]['id']) {
       res.render('urls_new', { user_id: req.cookies.user_id });
       return;
     }
@@ -77,7 +92,7 @@ app.get('/urls/:shortURL', (req, res) => {
 
 // receives request for specific short url page and responds with redirection to the corresponding website
 app.get('/u/:shortURL', (req, res) => {
-  let longURL = urlDatabase[req.params.shortURL];
+  let longURL = urlDatabase[req.params.shortURL].longURL;
   res.redirect(longURL);
 });
 
@@ -99,7 +114,6 @@ app.post('/urls', (req, res) => {
       longURL: req.body.longURL,
       user: req.cookies.user_id
     };
-    console.log(urlDatabase)
     res.redirect(`/urls/${newShortURL}`);
   } else {
     res.redirect('/urls/new');
@@ -108,20 +122,29 @@ app.post('/urls', (req, res) => {
 
 // receives form post request to delete, deletes associated short url property from urlDatabase, and redirects to /urls
 app.post('/urls/:shortURL/delete', (req, res) => {
-  delete urlDatabase[req.params.shortURL]
-  res.redirect('/urls');
+  for (let user in users) {
+    if (req.cookies.user_id === users[user]['id'] && req.cookies.user_id === urlDatabase[req.params.shortURL].user) {
+      delete urlDatabase[req.params.shortURL]
+      res.redirect('/urls');
+      return;
+    } else {
+      res.status(401).send('You do not have access.')
+    }
+  }
 });
 
 // receives form post request to update, updates associated long url from urlDatabase, and redirects to /urls (only updates truthy values)
 app.post('/urls/:shortURL', (req, res) => {
-  if (req.body.longURL) {
-    if (req.params.shortURL in urlDatabase) {
-      urlDatabase[req.params.shortURL].longURL = req.body.longURL;
-    } else {
+  for (let user in users) {
+    if (req.cookies.user_id === users[user]['id'] && req.cookies.user_id === urlDatabase[req.params.shortURL].user) {
+      if (req.body.longURL) {
+        urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+      }
       res.redirect(`/urls/${req.params.shortURL}`);
+    } else {
+      res.status(401).send('You do not have access.')
     }
   }
-  res.redirect('/urls');
 });
 
 // receives form post request to sign in, responds with cookie and redirection to /

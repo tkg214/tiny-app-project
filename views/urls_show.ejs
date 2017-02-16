@@ -7,12 +7,14 @@
   <body>
     <% include partials/_header %>
     <div>
-      <%= `${longURL} : ${shortURL}` %>
-      <form action="/urls/<%= shortURL %>" method="POST">
-        <label for="longURL">Update URL:</label>
-        <input id="longURL" name="longURL">
-        <button>Update URL</button>
-      </form>
+      <a href="../../u/<%= shortURL %>"><%= longURL %></a> : <%= shortURL %>
+      <% if (user_id) { %>
+        <form action="/urls/<%= shortURL %>" method="POST">
+          <label for="longURL">Update URL:</label>
+          <input id="longURL" name="longURL">
+          <button>Update URL</button>
+        </form>
+      <% } %>
     <div>
   </body>
 </html>
