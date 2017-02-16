@@ -8,12 +8,12 @@
     <% include partials/_header %>
     <div>
       <ul>
-        <% for (key in urls) { %>
-          <li><%= `${key} : ${urls[key]}` %>
-            <form method="post" action="/urls/<%= key %>/delete">
+        <% for (url in urlDatabase) { %>
+          <li><%= `${urlDatabase[url].shortURL} : ${urlDatabase[url].longURL}` %>
+            <form method="post" action="/urls/<%= urlDatabase[url].shortURL %>/delete">
               <button>Delete</button>
             </form>
-            <button><a href= "/urls/<%= key %>">Edit</a></button>
+            <button><a href= "/urls/<%= urlDatabase[url].shortURL %>">Edit</a></button>
           </li>
         <% } %>
       <a href= "/urls/new">Shorten new URL</a>

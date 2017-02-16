@@ -2,13 +2,13 @@
 
 <html lang="en">
   <head>
-    <title><%= key %></title>
+    <title><%= shortURL %></title>
   </head>
   <body>
     <% include partials/_header %>
     <div>
-      <%= `${url} : ${key}` %>
-      <form action="/urls/<%= key %>" method="POST">
+      <%= `${longURL} : ${shortURL}` %>
+      <form action="/urls/<%= shortURL %>" method="POST">
         <label for="longURL">Update URL:</label>
         <input id="longURL" name="longURL">
         <button>Update URL</button>
