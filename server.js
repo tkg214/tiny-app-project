@@ -63,31 +63,46 @@ function prependProtocol(url) {
 
 // receives request for root path, redirects to /urls
 app.get('/', (req, res) => {
-  res.redirect('/urls');
-});
-
-// receives request to show list of urls page and responds with rendered urls_index.ejs
-app.get('/urls', (req, res) => {
-  res.render('urls_index', {
-    urlDatabase: urlsForUser(req.session.user_id),
-    user_id: req.session.user_id
-  });
-});
-
-// receives request to create new url page and responds with rendered urls_new.ejs
-app.get('/urls/new', (req, res) => {
   for (let user in users) {
     if (req.session.user_id === users[user]['id']) {
-      res.render('urls_new', { user_id: req.session.user_id });
+      res.redirect('/urls');
       return;
     }
   }
   res.redirect('/login');
 });
 
+// receives request to show list of urls page and responds with rendered urls_index.ejs
+app.get('/urls', (req, res) => {
+  for (let user in users) {
+    if (req.session.user_id === users[user]['id']) {
+      res.status(200);
+      res.render('urls_index', {
+      urlDatabase: urlsForUser(req.session.user_id),
+      user_id: req.session.user_id
+      });
+      return;
+    }
+  }
+  res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
+});
+
+// receives request to create new url page and responds with rendered urls_new.ejs
+app.get('/urls/new', (req, res) => {
+  for (let user in users) {
+    if (req.session.user_id === users[user]['id']) {
+      res.status(200);
+      res.render('urls_new', { user_id: req.session.user_id });
+      return;
+    }
+  }
+  res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
+});
+
 // receives request to show specific url page and responds with rendered urls_show.ejs template, otherwise responds with urls_new.ejs
 app.get('/urls/:shortURL', (req, res) => {
   if (req.params.shortURL in urlDatabase) {
+    res.status(200);
     res.render('urls_show', {
       shortURL: urlDatabase[req.params.shortURL].shortURL,
       longURL: urlDatabase[req.params.shortURL].longURL,
@@ -101,24 +116,31 @@ app.get('/urls/:shortURL', (req, res) => {
 
 // receives request for specific short url page and responds with redirection to the corresponding website
 app.get('/u/:shortURL', (req, res) => {
-  let longURL = urlDatabase[req.params.shortURL].longURL;
-  res.redirect(longURL);
+  if (req.params.shortURL in urlDatabase) {
+      let longURL = urlDatabase[req.params.shortURL].longURL;
+      res.status(200);
+      res.redirect(longURL);
+  } else {
+  res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
+  }
 });
 
 // receives request for registration page and responds with registeration page
 app.get('/register', (req, res) => {
   if (!req.session.user_id) {
+    res.status(200);
     res.render('register');
   } else {
-    res.redirect('/urls');
+    res.redirect('/');
   }
-})
+});
 
 app.get('/login', (req, res) => {
   if (!req.session.user_id) {
+    res.status(200);
     res.render('login');
   } else {
-    res.redirect('/urls');
+    res.redirect('/');
   }
 });
 
@@ -140,9 +162,9 @@ app.post('/urls', (req, res) => {
 // receives form post request to delete, deletes associated short url property from urlDatabase, and redirects to /urls
 app.post('/urls/:shortURL/delete', (req, res) => {
   for (let user in users) {
-    if (req.session.user_id=== users[user]['id'] && req.session.user_id === urlDatabase[req.params.shortURL].user) {
+    if (req.session.user_id === users[user]['id'] && req.session.user_id === urlDatabase[req.params.shortURL].user) {
       delete urlDatabase[req.params.shortURL]
-      res.redirect('/urls');
+      res.redirect('/');
       return;
     } else {
       res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')

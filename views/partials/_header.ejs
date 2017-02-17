@@ -1,4 +1,4 @@
-<h1>TinyApp Project</h1>
+<a href="/"><h1>TinyApp Project</h1></a>
 <div style="margin-bottom: 30px">
   <% if (!user_id) { %>
     <form action="/login" method="POST">
@@ -9,7 +9,7 @@
       <button>Sign In</button>
     </form>
 
-    <button><a href= "/register">Register</a></button>
+    <button><a href="/register">Register</a></button>
   <% } else { %>
     <form action="/logout" method="POST">
       <button>Sign Out</button>

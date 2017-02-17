@@ -8,11 +8,13 @@
     <% include partials/_header %>
     <a href="../../u/<%= shortURL %>"><%= longURL %></a> : http://tinyapp.com/u/<%= shortURL %>
     <% if (user_id === urlUserId) { %>
-      <form action="/urls/<%= shortURL %>" method="POST">
-        <label for="longURL">Update URL:</label>
-        <input id="longURL" name="longURL" value="<%= longURL %>">
-        <button>Update URL</button>
-      </form>
+      <div style="margin-top: 10px">
+        <form action="/urls/<%= shortURL %>" method="POST">
+          <label for="longURL">Update URL:</label>
+          <input id="longURL" name="longURL" value="<%= longURL %>">
+          <button>Update URL</button>
+        </form>
+      </div>
     <% } %>
   </body>
 </html>
