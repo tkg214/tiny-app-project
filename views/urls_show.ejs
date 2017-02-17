@@ -9,12 +9,16 @@
     <a href="../../u/<%= shortURL %>"><%= longURL %></a> : http://tinyapp.com/u/<%= shortURL %>
     <% if (user_id === urlUserId) { %>
       <div style="margin-top: 10px">
-        <form action="/urls/<%= shortURL %>" method="POST">
+        <form action="/urls/<%= shortURL %>?_method=PUT" method="POST">
           <label for="longURL">Update URL:</label>
           <input id="longURL" name="longURL" value="<%= longURL %>">
           <button>Update URL</button>
         </form>
       </div>
     <% } %>
+    <div style="margin-top: 20px">
+      <button><a href= "/urls">Back</a></button>
+      <button><a href= "/urls/new">Shorten New URL</a></button>
+    </div>
   </body>
 </html>

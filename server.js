@@ -5,7 +5,7 @@ const PORT = process.env.PORT || 8080; // default port 8080
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
-const cookieSession = require('cookie-session'); //cookie-session
+const cookieSession = require('cookie-session');
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET || 'development']
@@ -13,7 +13,8 @@ app.use(cookieSession({
 
 const bcrypt = require('bcrypt');
 
-// replace cookie with session ** req.session.user_id
+const methodOverride = require('method-override');
+app.use(methodOverride('_method'));
 
 const randomstring = require('randomstring');
 
@@ -160,10 +161,10 @@ app.post('/urls', (req, res) => {
 });
 
 // receives form post request to delete, deletes associated short url property from urlDatabase, and redirects to /urls
-app.post('/urls/:shortURL/delete', (req, res) => {
+app.delete('/urls/:shortURL', (req, res) => {
   for (let user in users) {
     if (req.session.user_id === users[user]['id'] && req.session.user_id === urlDatabase[req.params.shortURL].user) {
-      delete urlDatabase[req.params.shortURL]
+      delete urlDatabase[req.params.shortURL];
       res.redirect('/');
       return;
     } else {
@@ -173,7 +174,7 @@ app.post('/urls/:shortURL/delete', (req, res) => {
 });
 
 // receives form post request to update, updates associated long url from urlDatabase, and redirects to /urls (only updates truthy values)
-app.post('/urls/:shortURL', (req, res) => {
+app.put('/urls/:shortURL', (req, res) => {
   for (let user in users) {
     if (req.session.user_id === users[user]['id'] && req.session.user_id === urlDatabase[req.params.shortURL].user) {
       if (req.body.longURL) {

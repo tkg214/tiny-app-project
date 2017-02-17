@@ -20,13 +20,13 @@
               <a href="../../u/<%= urlDatabase[url].shortURL %>"><%= urlDatabase[url].longURL %></a> =>
               <a href="/urls/<%= urlDatabase[url].shortURL %>">http://tinyapp.com/u/<%= urlDatabase[url].shortURL %></a>
               <button style="display: inline-block;"><a href= "/urls/<%= urlDatabase[url].shortURL %>">Edit</a></button>
-              <form method="post" action="/urls/<%= urlDatabase[url].shortURL %>/delete" style="display: inline-block;">
+              <form method="POST" action="/urls/<%= urlDatabase[url].shortURL %>?_method=DELETE" style="display: inline-block;">
                 <button>Delete</button>
               </form>
             </li>
           <% } %>
         </ul>
-        <a href= "/urls/new">Shorten new URL</a>
+        <button><a href= "/urls/new">Shorten New URL</a></button>
         </div>
       <% } %>
     <div>
