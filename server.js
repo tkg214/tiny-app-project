@@ -42,7 +42,7 @@ function findUserId(email) {
 // function finds a users' posts and returns all instances in an object
 function urlsForUser(id) {
   let userURLS = {};
-  for (url in urlDatabase) {
+  for (let url in urlDatabase) {
     if (id === urlDatabase[url].user) {
       userURLS[urlDatabase[url].shortURL] = {
         shortURL: urlDatabase[url].shortURL,
