@@ -31,11 +31,20 @@ let users = {
 
 let sessions = {}
 
-// function finds user object based on email or user id
+// function finds user object based on email
 function findUserId(email) {
   for (user in users) {
     if (users[user]['email'] === email) {
       return users[user]['id'];
+    }
+  }
+}
+
+// function finds user object based on user id
+function findUserEmail(id) {
+  for (user in users) {
+    if (users[user]['id'] === id) {
+      return users[user]['email'];
     }
   }
 }
@@ -75,12 +84,14 @@ app.get('/', (req, res) => {
 
 // receives request to show list of urls page and responds with rendered urls_index.ejs
 app.get('/urls', (req, res) => {
+  let email = findUserEmail(req.session.user_id);
   for (let user in users) {
     if (req.session.user_id === users[user]['id']) {
       res.status(200);
       res.render('urls_index', {
       urlDatabase: urlsForUser(req.session.user_id),
-      user_id: req.session.user_id
+      user_id: req.session.user_id,
+      email: email
       });
       return;
     }
@@ -90,10 +101,13 @@ app.get('/urls', (req, res) => {
 
 // receives request to create new url page and responds with rendered urls_new.ejs
 app.get('/urls/new', (req, res) => {
+  let email = findUserEmail(req.session.user_id);
   for (let user in users) {
     if (req.session.user_id === users[user]['id']) {
       res.status(200);
-      res.render('urls_new', { user_id: req.session.user_id });
+      res.render('urls_new', {
+        user_id: req.session.user_id,
+        email: email });
       return;
     }
   }
@@ -102,17 +116,29 @@ app.get('/urls/new', (req, res) => {
 
 // receives request to show specific url page and responds with rendered urls_show.ejs template, otherwise responds with urls_new.ejs
 app.get('/urls/:shortURL', (req, res) => {
-  if (req.params.shortURL in urlDatabase) {
-    res.status(200);
-    res.render('urls_show', {
-      shortURL: urlDatabase[req.params.shortURL].shortURL,
-      longURL: urlDatabase[req.params.shortURL].longURL,
-      user_id: req.session.user_id,
-      urlUserId: urlDatabase[req.params.shortURL].user
-    });
-  } else {
-    res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
+  let email = findUserEmail(req.session.user_id);
+  for (let user in users) {
+    if (req.session.user_id === users[user]['id']) {
+      if (req.params.shortURL in urlDatabase) {
+        res.status(200);
+        res.render('urls_show', {
+          shortURL: urlDatabase[req.params.shortURL].shortURL,
+          longURL: urlDatabase[req.params.shortURL].longURL,
+          user_id: req.session.user_id,
+          urlUserId: urlDatabase[req.params.shortURL].user,
+          email: email
+        });
+        return;
+      } else {
+        res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
+        return;
+      }
+    } else {
+      res.status(403).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
+      return;
+    }
   }
+  res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
 });
 
 // receives request for specific short url page and responds with redirection to the corresponding website
@@ -160,6 +186,8 @@ app.post('/urls', (req, res) => {
   }
 });
 
+// have login check
+
 // receives form post request to delete, deletes associated short url property from urlDatabase, and redirects to /urls
 app.delete('/urls/:shortURL', (req, res) => {
   for (let user in users) {
@@ -168,9 +196,10 @@ app.delete('/urls/:shortURL', (req, res) => {
       res.redirect('/');
       return;
     } else {
-      res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
+      res.status(403).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
     }
   }
+  res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
 });
 
 // receives form post request to update, updates associated long url from urlDatabase, and redirects to /urls (only updates truthy values)
@@ -183,9 +212,10 @@ app.put('/urls/:shortURL', (req, res) => {
       res.redirect(`/urls/${req.params.shortURL}`);
       return;
     } else {
-      res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
+      res.status(403).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
     }
   }
+  res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
 });
 
 // receives form post request to sign in, responds with cookie and redirection to /
@@ -202,7 +232,6 @@ app.post('/login', (req, res) => {
       }
     }
   }
-  res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>');
 });
 
 // receives form post request to sign out, responds with cookie deletion and redirection to /
