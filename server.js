@@ -5,12 +5,15 @@ const PORT = process.env.PORT || 8080; // default port 8080
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
-const cookieParser = require('cookie-parser'); //cookie-session
-app.use(cookieParser()); //cookiesSession({ enter name, keys})
+const cookieSession = require('cookie-session'); //cookie-session
+app.use(cookieSession({
+  name: 'session',
+  keys: [process.env.SESSION_SECRET || 'development']
+}));
+
+const bcrypt = require('bcrypt');
 
 // replace cookie with session ** req.session.user_id
-
-// use bcrypt
 
 const randomstring = require('randomstring');
 
@@ -22,14 +25,10 @@ let urlDatabase = {
 };
 
 let users = {
-  UG79xq: { id: 'UG79xq', email: 'tkg214@gmail.com', password: 'a' },
-  ABc90s: { id: 'ABc90s', email: 'abc@gmail.com', password: 'a' }};
-
-/*
+  UG79xq: { id: 'UG79xq', email: 'tkg214@gmail.com', password: bcrypt.hashSync('a', 10) },
+  ABc90s: { id: 'ABc90s', email: 'abc@gmail.com', password: bcrypt.hashSync('b', 10) }};
 
 let sessions = {}
-
-*/
 
 // function finds user object based on email or user id
 function findUserId(email) {
@@ -40,8 +39,9 @@ function findUserId(email) {
   }
 }
 
+// function finds a users' posts and returns all instances in an object
 function urlsForUser(id) {
-  userURLS = {};
+  let userURLS = {};
   for (url in urlDatabase) {
     if (id === urlDatabase[url].user) {
       userURLS[urlDatabase[url].shortURL] = {
@@ -53,6 +53,14 @@ function urlsForUser(id) {
   return userURLS;
 }
 
+function prependProtocol(url) {
+  if (url.slice(0, 7) === 'http://' || url.slice(0, 8) === 'https://') {
+    return url;
+  } else {
+    return 'http://' + url;
+  }
+}
+
 // receives request for root path, redirects to /urls
 app.get('/', (req, res) => {
   res.redirect('/urls');
@@ -61,16 +69,16 @@ app.get('/', (req, res) => {
 // receives request to show list of urls page and responds with rendered urls_index.ejs
 app.get('/urls', (req, res) => {
   res.render('urls_index', {
-    urlDatabase: urlsForUser(req.cookies.user_id),
-    user_id: req.cookies.user_id// base on sessions
+    urlDatabase: urlsForUser(req.session.user_id),
+    user_id: req.session.user_id
   });
 });
 
 // receives request to create new url page and responds with rendered urls_new.ejs
 app.get('/urls/new', (req, res) => {
   for (let user in users) {
-    if (req.cookies.user_id === users[user]['id']) {
-      res.render('urls_new', { user_id: req.cookies.user_id });
+    if (req.session.user_id === users[user]['id']) {
+      res.render('urls_new', { user_id: req.session.user_id });
       return;
     }
   }
@@ -83,10 +91,11 @@ app.get('/urls/:shortURL', (req, res) => {
     res.render('urls_show', {
       shortURL: urlDatabase[req.params.shortURL].shortURL,
       longURL: urlDatabase[req.params.shortURL].longURL,
-      user_id: req.cookies.user_id
+      user_id: req.session.user_id,
+      urlUserId: urlDatabase[req.params.shortURL].user
     });
   } else {
-    res.status(404).send('Requested page does not exist.');
+    res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
   }
 });
 
@@ -98,12 +107,20 @@ app.get('/u/:shortURL', (req, res) => {
 
 // receives request for registration page and responds with registeration page
 app.get('/register', (req, res) => {
-  res.render('register');
+  if (!req.session.user_id) {
+    res.render('register');
+  } else {
+    res.redirect('/urls');
+  }
 })
 
 app.get('/login', (req, res) => {
-  res.render('login');
-})
+  if (!req.session.user_id) {
+    res.render('login');
+  } else {
+    res.redirect('/urls');
+  }
+});
 
 // receives form post request to create, generates random short url, stores long url as a value of short url, and redirects to new page created (only creates truthy values)
 app.post('/urls', (req, res) => {
@@ -111,8 +128,8 @@ app.post('/urls', (req, res) => {
   if (req.body.longURL) {
     urlDatabase[newShortURL] = {
       shortURL: newShortURL,
-      longURL: req.body.longURL,
-      user: req.cookies.user_id
+      longURL: prependProtocol(req.body.longURL),
+      user: req.session.user_id
     };
     res.redirect(`/urls/${newShortURL}`);
   } else {
@@ -123,12 +140,12 @@ app.post('/urls', (req, res) => {
 // receives form post request to delete, deletes associated short url property from urlDatabase, and redirects to /urls
 app.post('/urls/:shortURL/delete', (req, res) => {
   for (let user in users) {
-    if (req.cookies.user_id === users[user]['id'] && req.cookies.user_id === urlDatabase[req.params.shortURL].user) {
+    if (req.session.user_id=== users[user]['id'] && req.session.user_id === urlDatabase[req.params.shortURL].user) {
       delete urlDatabase[req.params.shortURL]
       res.redirect('/urls');
       return;
     } else {
-      res.status(401).send('You do not have access.')
+      res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
     }
   }
 });
@@ -136,13 +153,14 @@ app.post('/urls/:shortURL/delete', (req, res) => {
 // receives form post request to update, updates associated long url from urlDatabase, and redirects to /urls (only updates truthy values)
 app.post('/urls/:shortURL', (req, res) => {
   for (let user in users) {
-    if (req.cookies.user_id === users[user]['id'] && req.cookies.user_id === urlDatabase[req.params.shortURL].user) {
+    if (req.session.user_id === users[user]['id'] && req.session.user_id === urlDatabase[req.params.shortURL].user) {
       if (req.body.longURL) {
-        urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+        urlDatabase[req.params.shortURL].longURL = prependProtocol(req.body.longURL);
       }
       res.redirect(`/urls/${req.params.shortURL}`);
+      return;
     } else {
-      res.status(401).send('You do not have access.')
+      res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
     }
   }
 });
@@ -151,35 +169,34 @@ app.post('/urls/:shortURL', (req, res) => {
 app.post('/login', (req, res) => {
   for (let user in users) {
     if (users[user]['email'] === req.body.email) {
-      if (users[user]['password'] === req.body.password) {
-        res.cookie('user_id', findUserId(req.body.email));
+      if (bcrypt.compareSync(req.body.password, users[user]['password'])) {
+        req.session.user_id = findUserId(req.body.email);
         res.redirect('/');
         return;
       } else {
-        res.status(403).send('Your email and password do not match.');
+        res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>');
         return;
       }
     }
   }
-  res.status(403).send('Your email and password do not match.');
+  res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>');
 });
 
 // receives form post request to sign out, responds with cookie deletion and redirection to /
 app.post('/logout', (req, res) => {
-  res.clearCookie('user_id')
+  req.session = null;
   res.redirect('/');
 });
-// CLEAR COOKIE DOESNT WORK
 
 // receives form post request to register, creates user, and redirects
 app.post('/register', (req, res) => {
   if (!req.body.password || !req.body.email) {
-    res.status(400).send('Please enter both email and password.');
+    res.status(400).send('Please enter both email and password. <p><a href="/register">Back to Register</a></p>');
     return;
   }
   for (let user in users) {
     if (users[user]['email'] === req.body.email) {
-      res.status(400).send('Email already exists.');
+      res.status(400).send('Email already exists. <p><a href="/register">Back to Register</a></p><p><a href="/login">Back to Login</a></p>');
       return;
     }
   }
@@ -187,9 +204,9 @@ app.post('/register', (req, res) => {
   users[randomId] = {
     id: randomId,
     email: req.body.email,
-    password: req.body.password
+    password: bcrypt.hashSync(req.body.password, 10)
   }
-  res.cookie('user_id', users[randomId]['id']);
+  req.session.user_id = randomId;
   res.redirect('/');
 });
 
