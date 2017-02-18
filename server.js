@@ -32,6 +32,11 @@ let users = {
 
 let sessions = {}
 
+// generates random string using randomstring module
+function generateRandomKey(length) {
+  return randomstring.generate(length);
+};
+
 // function finds user object based on email
 function findUserId(email) {
   for (user in users) {
@@ -208,6 +213,7 @@ app.put('/urls/:shortURL', (req, res) => {
       return;
     } else {
       res.status(403).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
+      return;
     }
   }
   res.status(401).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
@@ -225,6 +231,9 @@ app.post('/login', (req, res) => {
         res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>');
         return;
       }
+    } else {
+      res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>')
+      return;
     }
   }
 });
@@ -256,12 +265,6 @@ app.post('/register', (req, res) => {
   req.session.user_id = randomId;
   res.redirect('/');
 });
-
-// generates random string using randomstring module
-function generateRandomKey(length) {
-  return randomstring.generate(length);
-};
-
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
