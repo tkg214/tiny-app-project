@@ -27,7 +27,8 @@ let urlDatabase = {
 
 let users = {
   UG79xq: { id: 'UG79xq', email: 'tkg214@gmail.com', password: bcrypt.hashSync('a', 10) },
-  ABc90s: { id: 'ABc90s', email: 'abc@gmail.com', password: bcrypt.hashSync('b', 10) }};
+  ABc90s: { id: 'ABc90s', email: 'abc@gmail.com', password: bcrypt.hashSync('b', 10) }
+};
 
 let sessions = {}
 
@@ -42,11 +43,7 @@ function findUserId(email) {
 
 // function finds user object based on user id
 function findUserEmail(id) {
-  for (user in users) {
-    if (users[user]['id'] === id) {
-      return users[user]['email'];
-    }
-  }
+  return users[id].email;
 }
 
 // function finds a users' posts and returns all instances in an object
@@ -63,6 +60,7 @@ function urlsForUser(id) {
   return userURLS;
 }
 
+// function that prepends http:// to url if it does not have a protocol
 function prependProtocol(url) {
   if (url.slice(0, 7) === 'http://' || url.slice(0, 8) === 'https://') {
     return url;
@@ -71,91 +69,89 @@ function prependProtocol(url) {
   }
 }
 
+//function checks if user is authorized
+function checkUserById(user_id) {
+  for (let id in users) {
+    if (user_id === users[id]['id'])
+      return true;
+  }
+}
+
 // receives request for root path, redirects to /urls
 app.get('/', (req, res) => {
-  for (let user in users) {
-    if (req.session.user_id === users[user]['id']) {
-      res.redirect('/urls');
-      return;
-    }
-  }
+  let user = checkUserById(req.session.user_id)
+  if (user) {
+    res.redirect('/urls');
+  } else {
   res.redirect('/login');
+  }
 });
 
 // receives request to show list of urls page and responds with rendered urls_index.ejs
 app.get('/urls', (req, res) => {
+  let user = checkUserById(req.session.user_id)
   let email = findUserEmail(req.session.user_id);
-  for (let user in users) {
-    if (req.session.user_id === users[user]['id']) {
-      res.status(200);
-      res.render('urls_index', {
+  if (user) {
+    res.render('urls_index', {
       urlDatabase: urlsForUser(req.session.user_id),
       user_id: req.session.user_id,
       email: email
-      });
-      return;
-    }
+    });
+  } else {
+    res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
   }
-  res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
 });
 
 // receives request to create new url page and responds with rendered urls_new.ejs
 app.get('/urls/new', (req, res) => {
+  let user = checkUserById(req.session.user_id)
   let email = findUserEmail(req.session.user_id);
-  for (let user in users) {
-    if (req.session.user_id === users[user]['id']) {
-      res.status(200);
-      res.render('urls_new', {
-        user_id: req.session.user_id,
-        email: email });
-      return;
-    }
+  if (user) {
+    res.render('urls_new', {
+      user_id: req.session.user_id,
+      email: email
+    });
+  } else {
+    res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
   }
-  res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
 });
 
 // receives request to show specific url page and responds with rendered urls_show.ejs template, otherwise responds with urls_new.ejs
 app.get('/urls/:shortURL', (req, res) => {
-  let email = findUserEmail(req.session.user_id);
-  for (let user in users) {
-    if (req.session.user_id === users[user]['id']) {
-      if (req.params.shortURL in urlDatabase) {
-        res.status(200);
-        res.render('urls_show', {
-          shortURL: urlDatabase[req.params.shortURL].shortURL,
-          longURL: urlDatabase[req.params.shortURL].longURL,
-          user_id: req.session.user_id,
-          urlUserId: urlDatabase[req.params.shortURL].user,
-          email: email
-        });
-        return;
-      } else {
-        res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
-        return;
-      }
+  let user = checkUserById(req.session.user_id)
+  if (user) {
+    let email = findUserEmail(req.session.user_id);
+    if (req.params.shortURL in urlDatabase) {
+      res.render('urls_show', {
+        shortURL: urlDatabase[req.params.shortURL].shortURL,
+        longURL: urlDatabase[req.params.shortURL].longURL,
+        user_id: req.session.user_id,
+        urlUserId: urlDatabase[req.params.shortURL].user,
+        email: email
+      });
     } else {
-      res.status(403).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
-      return;
+      res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
     }
-  }
+  } else if ( user ) {
+    res.status(403).send('You do not have access. <p><a href="/urls">Back to TinyApp</a></p>')
+  } else {
   res.status(401).send('You do not have access. <p><a href="/login">Login here</a></p>');
+  }
 });
 
 // receives request for specific short url page and responds with redirection to the corresponding website
 app.get('/u/:shortURL', (req, res) => {
   if (req.params.shortURL in urlDatabase) {
-      let longURL = urlDatabase[req.params.shortURL].longURL;
-      res.status(200);
-      res.redirect(longURL);
+    let longURL = urlDatabase[req.params.shortURL].longURL;
+    res.redirect(longURL);
   } else {
-  res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
+    res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
   }
 });
 
 // receives request for registration page and responds with registeration page
 app.get('/register', (req, res) => {
   if (!req.session.user_id) {
-    res.status(200);
     res.render('register');
   } else {
     res.redirect('/');
@@ -164,7 +160,6 @@ app.get('/register', (req, res) => {
 
 app.get('/login', (req, res) => {
   if (!req.session.user_id) {
-    res.status(200);
     res.render('login');
   } else {
     res.redirect('/');
