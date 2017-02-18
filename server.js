@@ -11,6 +11,9 @@ app.use(cookieSession({
   keys: [process.env.SESSION_SECRET || 'development']
 }));
 
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 const bcrypt = require('bcrypt');
 
 const methodOverride = require('method-override');
@@ -21,8 +24,8 @@ const randomstring = require('randomstring');
 app.set('view engine', 'ejs');
 
 let urlDatabase = {
-  'b2xVn2': { shortURL: 'b2xVn2', longURL: 'http://www.google.com', user: 'UG79xq' },
-  '9sm5xK': { shortURL: '9sm5xK', longURL: 'http://www.lighthouselabs.ca', user: 'UG79xq' }
+  'b2xVn2': { shortURL: 'b2xVn2', longURL: 'http://www.google.com', user: 'UG79xq', visitors: {} },
+  '9sm5xK': { shortURL: '9sm5xK', longURL: 'http://www.lighthouselabs.ca', user: 'UG79xq', visitors: {} }
 };
 
 let users = {
@@ -74,7 +77,7 @@ function prependProtocol(url) {
   }
 }
 
-//function checks if user is authorized
+//function checks if user is authorized **fetch user instead of returning true
 function checkUserById(user_id) {
   for (let id in users) {
     if (user_id === users[id]['id'])
@@ -88,15 +91,15 @@ app.get('/', (req, res) => {
   if (user) {
     res.redirect('/urls');
   } else {
-  res.redirect('/login');
+    res.redirect('/login');
   }
 });
 
 // receives request to show list of urls page and responds with rendered urls_index.ejs
 app.get('/urls', (req, res) => {
   let user = checkUserById(req.session.user_id)
-  let email = findUserEmail(req.session.user_id);
   if (user) {
+    let email = findUserEmail(req.session.user_id);
     res.render('urls_index', {
       urlDatabase: urlsForUser(req.session.user_id),
       user_id: req.session.user_id,
@@ -110,8 +113,8 @@ app.get('/urls', (req, res) => {
 // receives request to create new url page and responds with rendered urls_new.ejs
 app.get('/urls/new', (req, res) => {
   let user = checkUserById(req.session.user_id)
-  let email = findUserEmail(req.session.user_id);
   if (user) {
+    let email = findUserEmail(req.session.user_id);
     res.render('urls_new', {
       user_id: req.session.user_id,
       email: email
@@ -146,13 +149,30 @@ app.get('/urls/:shortURL', (req, res) => {
 
 // receives request for specific short url page and responds with redirection to the corresponding website
 app.get('/u/:shortURL', (req, res) => {
+  let newTimestamp = new Date ();
   if (req.params.shortURL in urlDatabase) {
+    if (req.session.user_id !== urlDatabase[req.params.shortURL].user && !req.cookies.visitor_id) {
+      let newVisitorId = generateRandomKey(8);
+      res.cookie('visitor_id', newVisitorId);
+      urlDatabase[req.params.shortURL].visitors[newVisitorId] = {
+        visitor_id: newVisitorId,
+        timestamp: [newTimestamp]
+      }
+    } else if (!urlDatabase[req.params.shortURL].visitors[req.cookies.visitor_id]) {
+      urlDatabase[req.params.shortURL].visitors[req.cookies.visitor_id] = {
+        visitor_id: req.cookies.visitor_id,
+        timestamp: [newTimestamp]
+      }
+    } else if (req.cookies.visitor_id) {
+      urlDatabase[req.params.shortURL].visitors[req.cookies.visitor_id].timestamp.push(newTimestamp);
+    }
     let longURL = urlDatabase[req.params.shortURL].longURL;
     res.redirect(longURL);
   } else {
     res.status(404).send('Requested page does not exist. <p><a href="/urls">Back to TinyApp</a></p>');
   }
 });
+
 
 // receives request for registration page and responds with registeration page
 app.get('/register', (req, res) => {
@@ -178,15 +198,14 @@ app.post('/urls', (req, res) => {
     urlDatabase[newShortURL] = {
       shortURL: newShortURL,
       longURL: prependProtocol(req.body.longURL),
-      user: req.session.user_id
+      user: req.session.user_id,
+      visitors: {}
     };
     res.redirect(`/urls/${newShortURL}`);
   } else {
     res.redirect('/urls/new');
   }
 });
-
-// have login check
 
 // receives form post request to delete, deletes associated short url property from urlDatabase, and redirects to /urls
 app.delete('/urls/:shortURL', (req, res) => {
@@ -231,11 +250,9 @@ app.post('/login', (req, res) => {
         res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>');
         return;
       }
-    } else {
-      res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>')
-      return;
     }
   }
+  res.status(403).send('Your email and password do not match. <p><a href="/login">Back to Login</a></p>')
 });
 
 // receives form post request to sign out, responds with cookie deletion and redirection to /
